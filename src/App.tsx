@@ -24,8 +24,10 @@ import {
   UserRoundCheck,
   X,
 } from 'lucide-react';
-import type { ComponentType, ReactNode } from 'react';
+import type { ComponentType, FormEvent, ReactNode } from 'react';
 import { useMemo, useState } from 'react';
+import { createServiceProposal, type ProposalFormData } from './lib/proposals';
+import { isSupabaseConfigured } from './lib/supabase';
 
 type Role = 'customer' | 'owner';
 type View = 'home' | 'login' | 'proposal' | 'customer' | 'owner';
@@ -647,6 +649,72 @@ function LoginPage({
 }
 
 function ProposalPage({ setView }: { setView: (view: View) => void }) {
+  const [formData, setFormData] = useState<ProposalFormData>({
+    companyName: '',
+    contactPerson: '',
+    email: '',
+    phone: '',
+    serviceRequired: '',
+    targetMarket: '',
+    productName: '',
+    productCategory: '',
+    proposalNotes: '',
+    acceptedFeeReview: false,
+    documentNames: [],
+  });
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [submitMessage, setSubmitMessage] = useState('');
+
+  function updateField(field: keyof ProposalFormData, value: string | boolean | string[]) {
+    setFormData((current) => ({ ...current, [field]: value }));
+  }
+
+  async function handleProposalSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSubmitStatus('submitting');
+    setSubmitMessage('');
+
+    try {
+      const requiredFields: (keyof ProposalFormData)[] = [
+        'companyName',
+        'contactPerson',
+        'email',
+        'serviceRequired',
+        'targetMarket',
+        'productName',
+      ];
+      const missingField = requiredFields.find((field) => !String(formData[field]).trim());
+
+      if (missingField) {
+        throw new Error('Please fill all required proposal details before submitting.');
+      }
+
+      if (!formData.acceptedFeeReview) {
+        throw new Error('Please accept the fee review criteria before submitting.');
+      }
+
+      const savedProposal = await createServiceProposal(formData);
+      setSubmitStatus('success');
+      setSubmitMessage(`Proposal submitted successfully. Reference ID: ${savedProposal.id}`);
+      setFormData({
+        companyName: '',
+        contactPerson: '',
+        email: '',
+        phone: '',
+        serviceRequired: '',
+        targetMarket: '',
+        productName: '',
+        productCategory: '',
+        proposalNotes: '',
+        acceptedFeeReview: false,
+        documentNames: [],
+      });
+    } catch (error) {
+      setSubmitStatus('error');
+      setSubmitMessage(error instanceof Error ? error.message : 'Unable to submit proposal. Please try again.');
+    }
+  }
+
   return (
     <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <SectionTitle
@@ -656,22 +724,29 @@ function ProposalPage({ setView }: { setView: (view: View) => void }) {
       />
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_0.8fr]">
-        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <form className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-6" onSubmit={handleProposalSubmit}>
+          {!isSupabaseConfigured ? (
+            <div className="mb-5 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+              Supabase is not configured yet. Add your project URL and anon key in <code>.env.local</code>, then restart the dev server.
+            </div>
+          ) : null}
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Company name" placeholder="Aster Biopharma Pvt Ltd" />
-            <Field label="Contact person" placeholder="Full name" />
-            <Field label="Email" placeholder="name@company.com" type="email" />
-            <Field label="Phone" placeholder="+91 98765 43210" />
-            <Field label="Service required" placeholder="Drug registration, eCTD, labeling..." />
-            <Field label="Target market" placeholder="India, US, EU, UK..." />
-            <Field label="Product name" placeholder="Product or molecule name" />
-            <Field label="Product category" placeholder="API, finished dosage, biologic..." />
+            <Field label="Company name" onChange={(value) => updateField('companyName', value)} placeholder="Aster Biopharma Pvt Ltd" required value={formData.companyName} />
+            <Field label="Contact person" onChange={(value) => updateField('contactPerson', value)} placeholder="Full name" required value={formData.contactPerson} />
+            <Field label="Email" onChange={(value) => updateField('email', value)} placeholder="name@company.com" required type="email" value={formData.email} />
+            <Field label="Phone" onChange={(value) => updateField('phone', value)} placeholder="+91 98765 43210" value={formData.phone} />
+            <Field label="Service required" onChange={(value) => updateField('serviceRequired', value)} placeholder="Drug registration, eCTD, labeling..." required value={formData.serviceRequired} />
+            <Field label="Target market" onChange={(value) => updateField('targetMarket', value)} placeholder="India, US, EU, UK..." required value={formData.targetMarket} />
+            <Field label="Product name" onChange={(value) => updateField('productName', value)} placeholder="Product or molecule name" required value={formData.productName} />
+            <Field label="Product category" onChange={(value) => updateField('productCategory', value)} placeholder="API, finished dosage, biologic..." value={formData.productCategory} />
           </div>
           <label className="mt-4 block">
             <span className="text-sm font-bold text-slate-700">Proposal notes</span>
             <textarea
               className="mt-2 min-h-32 w-full rounded-md border border-slate-300 px-3 py-3 text-sm outline-none focus:border-teal-700 focus:ring-2 focus:ring-teal-100"
+              onChange={(event) => updateField('proposalNotes', event.target.value)}
               placeholder="Describe the service scope, current approval status, deadlines, and known regulatory questions."
+              value={formData.proposalNotes}
             />
           </label>
 
@@ -681,25 +756,56 @@ function ProposalPage({ setView }: { setView: (view: View) => void }) {
             <p className="mt-1 text-sm text-slate-600">
               Product details, licenses, labels, previous approvals, stability data, and manufacturing information.
             </p>
-            <button className="mt-4 rounded-md bg-white px-4 py-2 text-sm font-black text-teal-800 shadow-sm" type="button">
+            <label className="mt-4 inline-flex cursor-pointer rounded-md bg-white px-4 py-2 text-sm font-black text-teal-800 shadow-sm">
               Choose files
-            </button>
+              <input
+                className="sr-only"
+                multiple
+                onChange={(event) => {
+                  const names = Array.from(event.target.files ?? []).map((file) => file.name);
+                  updateField('documentNames', names);
+                }}
+                type="file"
+              />
+            </label>
+            {formData.documentNames.length ? (
+              <p className="mt-3 text-xs font-bold text-teal-900">{formData.documentNames.length} file name(s) ready to save with proposal.</p>
+            ) : null}
           </div>
 
           <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <label className="flex items-start gap-3 text-sm text-slate-600">
-              <input className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-700" type="checkbox" />
+              <input
+                checked={formData.acceptedFeeReview}
+                className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-700"
+                onChange={(event) => updateField('acceptedFeeReview', event.target.checked)}
+                type="checkbox"
+              />
               <span>I agree that the owner will review the request and send fee criteria before work begins.</span>
             </label>
             <button
-              className="rounded-md bg-teal-700 px-5 py-3 text-sm font-black text-white hover:bg-teal-800"
-              onClick={() => setView('customer')}
-              type="button"
+              className="rounded-md bg-teal-700 px-5 py-3 text-sm font-black text-white hover:bg-teal-800 disabled:bg-slate-400"
+              disabled={submitStatus === 'submitting'}
+              type="submit"
             >
-              Submit request
+              {submitStatus === 'submitting' ? 'Submitting...' : 'Submit request'}
             </button>
           </div>
-        </section>
+          {submitMessage ? (
+            <div
+              className={`mt-5 rounded-md p-4 text-sm font-semibold ${
+                submitStatus === 'success' ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-800'
+              }`}
+            >
+              {submitMessage}
+              {submitStatus === 'success' ? (
+                <button className="ml-2 underline" onClick={() => setView('customer')} type="button">
+                  View customer dashboard
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </form>
 
         <aside className="grid gap-4">
           <InfoPanel
@@ -1039,14 +1145,34 @@ function InfoPanel({ icon: Icon, title, items }: { icon: IconType; title: string
   );
 }
 
-function Field({ label, placeholder, type = 'text' }: { label: string; placeholder: string; type?: string }) {
+function Field({
+  label,
+  onChange,
+  placeholder,
+  required = false,
+  type = 'text',
+  value,
+}: {
+  label: string;
+  onChange?: (value: string) => void;
+  placeholder: string;
+  required?: boolean;
+  type?: string;
+  value?: string;
+}) {
   return (
     <label className="block">
-      <span className="text-sm font-bold text-slate-700">{label}</span>
+      <span className="text-sm font-bold text-slate-700">
+        {label}
+        {required ? <span className="text-rose-600"> *</span> : null}
+      </span>
       <input
         className="mt-2 w-full rounded-md border border-slate-300 px-3 py-3 text-sm outline-none focus:border-teal-700 focus:ring-2 focus:ring-teal-100"
+        onChange={(event) => onChange?.(event.target.value)}
         placeholder={placeholder}
+        required={required}
         type={type}
+        value={value}
       />
     </label>
   );
