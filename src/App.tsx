@@ -16,6 +16,7 @@ import {
   LogIn,
   Menu,
   MessageSquareText,
+  Send,
   Search,
   ShieldCheck,
   Smartphone,
@@ -195,6 +196,34 @@ const metrics = [
   { label: 'Completed month', value: '11', detail: 'closed services', icon: BadgeCheck },
 ];
 
+const footerGroups = [
+  {
+    title: 'Pages',
+    links: [
+      { label: 'Home', view: 'home' },
+      { label: 'Services', view: 'home' },
+      { label: 'Submit proposal', view: 'proposal' },
+      { label: 'Login', view: 'login' },
+    ],
+  },
+  {
+    title: 'Portal',
+    links: [
+      { label: 'Customer dashboard', view: 'customer' },
+      { label: 'Owner dashboard', view: 'owner' },
+      { label: 'Documents', view: 'customer' },
+      { label: 'Communication log', view: 'customer' },
+    ],
+  },
+] satisfies { title: string; links: { label: string; view: View }[] }[];
+
+const socialLinks = [
+  { label: 'LinkedIn', href: 'https://www.linkedin.com' },
+  { label: 'Facebook', href: 'https://www.facebook.com' },
+  { label: 'X', href: 'https://x.com' },
+  { label: 'YouTube', href: 'https://www.youtube.com' },
+];
+
 function App() {
   const [view, setView] = useState<View>('home');
   const [role, setRole] = useState<Role>('customer');
@@ -231,6 +260,7 @@ function App() {
         setView={setView}
       />
       {content}
+      <Footer setView={setView} />
     </div>
   );
 }
@@ -342,6 +372,99 @@ function Header({
         </div>
       ) : null}
     </header>
+  );
+}
+
+function Footer({ setView }: { setView: (view: View) => void }) {
+  const year = new Date().getFullYear();
+
+  return (
+    <footer className="border-t border-slate-200 bg-slate-950 text-white">
+      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1.2fr_1fr_1fr_1fr] lg:px-8">
+        <div>
+          <button className="flex items-center gap-3 text-left" onClick={() => setView('home')} type="button">
+            <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-teal-500 text-slate-950">
+              <BriefcaseMedical className="h-6 w-6" />
+            </span>
+            <span>
+              <span className="block text-lg font-black">ReguTrack</span>
+              <span className="block text-sm font-semibold text-slate-300">Drug regulatory services</span>
+            </span>
+          </button>
+          <p className="mt-4 max-w-sm text-sm leading-6 text-slate-300">
+            A secure portal for regulatory proposals, document exchange, fee acceptance, stage tracking, and complete customer communication history.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            {socialLinks.map((link) => (
+              <a
+                className="rounded-md border border-slate-700 px-3 py-2 text-sm font-bold text-slate-200 hover:border-teal-400 hover:text-teal-300"
+                href={link.href}
+                key={link.label}
+                rel="noreferrer"
+                target="_blank"
+              >
+                {link.label}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {footerGroups.map((group) => (
+          <div key={group.title}>
+            <h2 className="text-sm font-black uppercase tracking-wide text-teal-300">{group.title}</h2>
+            <div className="mt-4 grid gap-3">
+              {group.links.map((link) => (
+                <button
+                  className="w-fit text-left text-sm font-semibold text-slate-300 hover:text-white"
+                  key={`${group.title}-${link.label}`}
+                  onClick={() => setView(link.view)}
+                  type="button"
+                >
+                  {link.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        <div>
+          <h2 className="text-sm font-black uppercase tracking-wide text-teal-300">Contact</h2>
+          <div className="mt-4 grid gap-3 text-sm text-slate-300">
+            <p>Regulatory affairs support for pharma, biotech, APIs, and healthcare products.</p>
+            <a className="font-semibold hover:text-white" href="mailto:info@regutrack.com">
+              info@regutrack.com
+            </a>
+            <a className="font-semibold hover:text-white" href="tel:+919876543210">
+              +91 98765 43210
+            </a>
+            <button
+              className="mt-2 inline-flex w-fit items-center gap-2 rounded-md bg-teal-500 px-4 py-2 text-sm font-black text-slate-950 hover:bg-teal-400"
+              onClick={() => setView('proposal')}
+              type="button"
+            >
+              Send proposal <Send className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t border-slate-800">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-5 text-sm text-slate-400 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
+          <p>Copyright © {year} ReguTrack Regulatory Services. All rights reserved.</p>
+          <div className="flex flex-wrap gap-4">
+            <button className="font-semibold hover:text-white" type="button">
+              Privacy policy
+            </button>
+            <button className="font-semibold hover:text-white" type="button">
+              Terms of service
+            </button>
+            <button className="font-semibold hover:text-white" type="button">
+              Compliance notice
+            </button>
+          </div>
+        </div>
+      </div>
+    </footer>
   );
 }
 
