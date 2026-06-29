@@ -16,7 +16,7 @@ export type ProposalFormData = {
 
 export async function createServiceProposal(formData: ProposalFormData) {
   if (!supabase) {
-    throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env.local.');
+    throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY to .env.local');
   }
 
   const { data, error } = await supabase
@@ -40,7 +40,7 @@ export async function createServiceProposal(formData: ProposalFormData) {
     .single();
 
   if (error) {
-    throw error;
+    throw new Error(error.message ?? 'Unable to submit proposal. Please try again.');
   }
 
   return data;

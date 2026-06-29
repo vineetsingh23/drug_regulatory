@@ -710,8 +710,15 @@ function ProposalPage({ setView }: { setView: (view: View) => void }) {
         documentNames: [],
       });
     } catch (error) {
+      console.error('Proposal submit failed', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : error && typeof error === 'object' && 'message' in error
+          ? String((error as { message?: string }).message)
+          : 'Unable to submit proposal. Please try again.';
       setSubmitStatus('error');
-      setSubmitMessage(error instanceof Error ? error.message : 'Unable to submit proposal. Please try again.');
+      setSubmitMessage(errorMessage || 'Unable to submit proposal. Please try again.');
     }
   }
 
